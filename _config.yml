@@ -1,4 +1,4 @@
 name: SPUI's notes
 description: Tech notes
 url: "https://spuiuk.github.io"
-markdown: kramdown
+markdown: GFM
