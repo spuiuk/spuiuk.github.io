@@ -129,6 +129,9 @@ Clone the samba-container repo in the base directory
 ```
 git clone https://github.com/samba-in-kubernetes/samba-container.git
 cd samba-container
+```
+Edit file ./examples/kubernetes/samba-ctdb-dm-sset.yaml and replace CHANGEME and CHANGEME.YOURDOMAIN.TLD with domain1 and domain1.sink.test. Once done, start up the the statefulset.
+```
 kubectl create -f ./examples/kubernetes/samba-ctdb-dm-sset.yml
 ```
 
