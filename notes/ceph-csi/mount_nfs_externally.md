@@ -31,98 +31,44 @@ $ minikube ip -n minikube-m02
 
 ### Next we attempt to obtain the share.
 
-We can do that by looking into the NFS-Ganesha configuration file for the share.
+For a mounted PV, we can use the information from the description for the PV.
 
-First identify the pod containing the share. Also identify the tools pod which we will require.
 ```
-$ kr get pods
-NAME                                                     READY   STATUS      RESTARTS      AGE
-..
-rook-ceph-nfs-my-nfs-a-5787f9fdd9-v95fr                  2/2     Running     0             30h
-..
-rook-ceph-tools-7c8ddb978b-cm9hr                         1/1     Running     0             30h
+$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM             STORAGECLASS   REASON   AGE
+pvc-717cfefa-a119-4271-b71f-e5659284b9d0   1Gi        RWO            Delete           Bound    default/nfs-pvc   rook-nfs                31h
+$ kubectl describe pv pvc-717cfefa-a119-4271-b71f-e5659284b9d0
+Name:            pvc-717cfefa-a119-4271-b71f-e5659284b9d0
+Labels:          <none>
+Annotations:     pv.kubernetes.io/provisioned-by: rook-ceph.nfs.csi.ceph.com
+Finalizers:      [kubernetes.io/pv-protection]
+StorageClass:    rook-nfs
+Status:          Bound
+Claim:           default/nfs-pvc
+Reclaim Policy:  Delete
+Access Modes:    RWO
+VolumeMode:      Filesystem
+Capacity:        1Gi
+Node Affinity:   <none>
+Message:         
+Source:
+    Type:              CSI (a Container Storage Interface (CSI) volume source)
+    Driver:            rook-ceph.nfs.csi.ceph.com
+    FSType:            
+    VolumeHandle:      0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
+    ReadOnly:          false
+    VolumeAttributes:      clusterID=rook-ceph
+                           fsName=myfs
+                           nfsCluster=my-nfs
+                           pool=myfs-replicated
+                           server=rook-ceph-nfs-my-nfs-a
+                           share=/0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
+                           storage.kubernetes.io/csiProvisionerIdentity=1661852183359-8081-rook-ceph.nfs.csi.ceph.com
+                           subvolumeName=csi-vol-8318502f-2847-11ed-a12d-62dcd71a5499
+                           subvolumePath=/volumes/csi/csi-vol-8318502f-2847-11ed-a12d-62dcd71a5499/2f263dad-c5b7-470c-9cb2-be980acc023e
+Events:                <none>
 ```
-
-To read the ganesha configuration file, use the nfsganesha pod identified in the previous command:
-```
-$ kr exec -it rook-ceph-nfs-my-nfs-a-5787f9fdd9-v95fr  -- cat /etc/ganesha/ganesha.conf
-Defaulted container "nfs-ganesha" out of: nfs-ganesha, dbus-daemon, generate-minimal-ceph-conf (init)
-
-NFS_CORE_PARAM {
-	Enable_NLM = false;
-	Enable_RQUOTA = false;
-	Protocols = 4;
-}
-
-MDCACHE {
-	Dir_Chunk = 0;
-}
-
-EXPORT_DEFAULTS {
-	Attr_Expiration_Time = 0;
-}
-
-NFSv4 {
-	Delegations = false;
-	RecoveryBackend = 'rados_cluster';
-	Minor_Versions = 1, 2;
-}
-
-RADOS_KV {
-	ceph_conf = '/etc/ceph/ceph.conf';
-	userid = nfs-ganesha.my-nfs.a;
-	nodeid = my-nfs.a;
-	pool = ".nfs";
-	namespace = "my-nfs";
-}
-
-RADOS_URLS {
-	ceph_conf = '/etc/ceph/ceph.conf';
-	userid = nfs-ganesha.my-nfs.a;
-	watch_url = 'rados://.nfs/my-nfs/conf-nfs.my-nfs';
-}
-
-%url	rados://.nfs/my-nfs/conf-nfs.my-nfs
-```
-Note the rados url at the bottom. This identifies the
-- pool: .nfs
-- Namespace: my-nfs
-- configuration: conf-nfs.my-nfs
-
-Now exec into the tools pod which we identified in the previous get pods command.
-```
-$ kr exec -it rook-ceph-tools-7c8ddb978b-cm9hr -- /bin/bash
-```
-Use the rados command to get the object containing the configuration using arguments from the url above.
-```
-$ rados -p .nfs -N my-nfs get conf-nfs.my-nfs  /tmp/conf-nfs.my-nfs
-$ cat /tmp/conf-nfs.my-nfs
-%url "rados://.nfs/my-nfs/export-1"
-```
-similarly fetch export-1
-```
-bash-4.4$ rados -p .nfs -N my-nfs get export-1  /tmp/export-1       
-bash-4.4$ cat /tmp/export-1
-EXPORT {
-    FSAL {
-        name = "CEPH";
-        user_id = "nfs.my-nfs.1";
-        filesystem = "myfs";
-        secret_access_key = "AQCl2g1jzhM7LRAALLETml8eoxC3C9p0ltoMaw==";
-    }
-    export_id = 1;
-    path = "/volumes/csi/csi-vol-8318502f-2847-11ed-a12d-62dcd71a5499/2f263dad-c5b7-470c-9cb2-be980acc023e";
-    pseudo = "/0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499";
-    access_type = "RW";
-    squash = "none";
-    attr_expiration_time = 0;
-    security_label = true;
-    protocols = 4;
-    transports = "TCP";
-}
-```
-
-The directive pseudo identifies the share: /0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
+The VolumeAttributes can be used to identify the share. In this case, it is share=/0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
 
 So we have the following
 - node ip address: 192.168.39.86
