@@ -1,4 +1,4 @@
-## Mounting nfs shares created by the Ceph-CSI driver
+## Mounting CephNFS - nfs shares
 
 I use the following alias when using kubectl with the rook-ceph namespace in the commands below.
 ```
