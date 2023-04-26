@@ -5,77 +5,77 @@ I use the following alias when using kubectl with the rook-ceph namespace in the
 $ alias kr=kubectl -n rook-ceph'
 ```
 
-### First, we setup a NodePort.
+### Minikube 
+
+If you start up minikube with the argument "--extra-config=apiserver.service-node-port-range=1-65535", you will be able to assign the Nodeports on a much wider range of ports which includes the standard NFS port 2049.
+
+The minikube startup script I use is
 ```
-$ kr get services
-NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE
-..
-rook-ceph-nfs-my-nfs-a    ClusterIP   10.102.88.161    <none>        2049/TCP            26h
-
-$ kr expose service rook-ceph-nfs-my-nfs-a --type=NodePort --port=2049 --name=node-nfs
-
-$ kr get services
-NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE
-node-nfs                  NodePort    10.108.69.151    <none>        2049:31573/TCP      135m
-..
-rook-ceph-nfs-my-nfs-a    ClusterIP   10.102.88.161    <none>        2049/TCP            28h
+if ! minikube status|grep Running
+then
+	/usr/local/bin/minikube start --driver=kvm2 --nodes=3 --extra-disks=2 --memory 4096 --cpus 2 --extra-config=apiserver.service-node-port-range=1-65535
+fi
 ```
-We can determine the NodePort. In this case, it is 31573.
 
+For our use case, it is important to run minikube with the kvm2 driver. This allows us easier access to the nodes using the libvirt network interfaces.
+
+### Virtual machine setup
+
+The kvm2 driver used by minikube setups a virtual network called mk-minikube which we can use to access the minikube nodes.
+
+Start up a virtual machine on the same host as the minikube setup to use as a NFS client. I use Fedora 37 on the client machine and virt-manager to interact with the KVM hypervisor on the host machine.
+Click on the virtual machine and go to the "Details" view. Click on "Add Hardware" and select the "Network" device. In the Network source drop down, select the 'mk-minikube' isolated network. Select "virtio" for the device model. Click Finish. You will need to stop the virtual machine and start it again for the client to show the new network interface. Once up, the network device should have an ip address in 192.168.39.0/24 network which is used by minikube for its nodes. You should now be able to directly contact the node from the client.
+
+For easier access, you can also add a forward rule to the subnet 192.168.39.0/24 in the host firewall and setup a static route to the host machine in your network router. This will enable you to directly access the client and the node machines using the ip addresses in the minikube network subnet.
+
+### Setup a NodePort to the NFS service.
+
+The following yaml file exposes a CephNFS resource "my-nfs" over NodePort.
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nfs-ext
+  labels:
+    app: my-nfs-service
+spec:
+  type: NodePort
+  ports:
+    - port: 2049
+      nodePort: 2049
+      name: "nfs"
+    - port: 2049
+      nodePort: 2049
+      protocol: UDP
+      name: "nfsu"
+  selector:
+    ceph_nfs: my-nfs
+```
+
+Setup the service and confirm that the NodePort service is up and running and listening on port 2049.
+```
+$ kr create -f nfs-ext.yaml 
+service/my-nfs-ext created
+$ kr get services
+NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                       AGE
+my-nfs-ext                NodePort    10.103.117.112   <none>        2049:2049/TCP,2049:2049/UDP   3s
+...
+```
 ### Then get the ip address for a node on the cluster.
 
 ```
-$ minikube ip -n minikube-m02
-192.168.39.86
+$ minikube ip 
+192.168.39.8
 ```
+We can then mount the NFS share over this ip address.
 
-### Next we attempt to obtain the share.
+### Mount on the client vm.
 
-For a mounted PV, we can use the information from the description for the PV.
-
+From your client vm, attempt to mount the nfs share.
 ```
-$ kubectl get pv
-NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM             STORAGECLASS   REASON   AGE
-pvc-717cfefa-a119-4271-b71f-e5659284b9d0   1Gi        RWO            Delete           Bound    default/nfs-pvc   rook-nfs                31h
-$ kubectl describe pv pvc-717cfefa-a119-4271-b71f-e5659284b9d0
-Name:            pvc-717cfefa-a119-4271-b71f-e5659284b9d0
-Labels:          <none>
-Annotations:     pv.kubernetes.io/provisioned-by: rook-ceph.nfs.csi.ceph.com
-Finalizers:      [kubernetes.io/pv-protection]
-StorageClass:    rook-nfs
-Status:          Bound
-Claim:           default/nfs-pvc
-Reclaim Policy:  Delete
-Access Modes:    RWO
-VolumeMode:      Filesystem
-Capacity:        1Gi
-Node Affinity:   <none>
-Message:         
-Source:
-    Type:              CSI (a Container Storage Interface (CSI) volume source)
-    Driver:            rook-ceph.nfs.csi.ceph.com
-    FSType:            
-    VolumeHandle:      0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
-    ReadOnly:          false
-    VolumeAttributes:      clusterID=rook-ceph
-                           fsName=myfs
-                           nfsCluster=my-nfs
-                           pool=myfs-replicated
-                           server=rook-ceph-nfs-my-nfs-a
-                           share=/0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
-                           storage.kubernetes.io/csiProvisionerIdentity=1661852183359-8081-rook-ceph.nfs.csi.ceph.com
-                           subvolumeName=csi-vol-8318502f-2847-11ed-a12d-62dcd71a5499
-                           subvolumePath=/volumes/csi/csi-vol-8318502f-2847-11ed-a12d-62dcd71a5499/2f263dad-c5b7-470c-9cb2-be980acc023e
-Events:                <none>
-```
-The VolumeAttributes can be used to identify the share. In this case, it is share=/0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
-
-So we have the following
-- node ip address: 192.168.39.86
-- node port: 31573
-- share: /0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499
-
-From your host machine, attempt to mount the nfs share.
-```
-# mount -t nfs4 -o port=31573 192.168.39.86:/0001-0009-rook-ceph-0000000000000001-8318502f-2847-11ed-a12d-62dcd71a5499/ /mnt
+# mount -t nfs4 -o port=31573 192.168.39.8:/ /mnt
+# cd /mnt
+# ls -la
+total 1
+drwxr-xr-x. 3 nobody nobody 29 Apr 13 15:15 myfs
 ```
