@@ -51,6 +51,7 @@ spec:
   selector:
     ceph_nfs: my-nfs
 ```
+Here we use the selector to point this NodePort to the service we intend to use. Here the selector is used to point to the CephNFS resource my-nfs.
 
 Setup the service and confirm that the NodePort service is up and running and listening on port 2049.
 ```
