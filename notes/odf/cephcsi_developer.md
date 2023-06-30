@@ -39,11 +39,11 @@ make run-e2e E2E_ARGS="--deploy-rbd=false --deploy-nfs=true --test-cephfs=false 
 - Make the necessary modifications for the ceph-csi repo, commit the patches and build the image with the following
 - Use the build script above to build the image and push onto your test repository.
 - Modify the rook example by copying ROOKDIR/deploy/examples/operator.yaml to ROOKDIR/deploy/examples/operator-devel.yaml and modifying it 
-+```
-+110c110,111
-+<   # ROOK_CSI_CEPH_IMAGE: "quay.io/cephcsi/cephcsi:v3.8.0"
-+---
-+>   ROOK_CSI_CEPH_IMAGE: "quay.io/spuiuk/ceph-csi:test"
-+563c564,566
-+```
+```
+110c110,111
+<   # ROOK_CSI_CEPH_IMAGE: "quay.io/cephcsi/cephcsi:v3.8.0"
+---
+>   ROOK_CSI_CEPH_IMAGE: "quay.io/spuiuk/ceph-csi:test"
+563c564,566
+```
 
