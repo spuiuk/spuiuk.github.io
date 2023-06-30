@@ -3,4 +3,5 @@
 - [sssd notes for connecting to the Samba AD server](sssd_configuration.md)
 - [Setup CephNFS with Windows AD](ceph-nfs-windowsad.md)
 - [CephNFS Developer Notes](cephnfs_developer.md)
+- [CephCSI Developer Notes](cephcsi_developer.md)
 
