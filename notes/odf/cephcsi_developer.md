@@ -16,6 +16,8 @@ podman push ${ENV_CSI_IMAGE_NAME}:canary
 
 This script is executed from within the ceph-csi repo directory.
 ```
+# We need this command to clean up artifacts from an older testing run
+# Will replace this with a more specific command once I have figured it out
 make clean
 
 export VM_DRIVER=kvm2
@@ -34,6 +36,13 @@ minikube image ls
 
 make run-e2e E2E_ARGS="--deploy-rbd=false --deploy-nfs=true --test-cephfs=false --test-rbd=false --test-nfs=true --delete-namespace-on-failure=false"
 ```
+## Steps to take before pushing a commit to a Pull Request
+
+- Once your code is acceptable and you have manually tested your code.
+- Run linter to ensure the code is acceptable to the linters used. Use the command "make go-lint"
+- Build the ceph-csi image and push to your test repo following the script above.
+- Run test scripts using the scripts above.
+- Push to the Pull Request.
 
 ## To deploy your test ceph-csi using the examples in the rook directory
 
