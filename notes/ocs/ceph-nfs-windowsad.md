@@ -2,9 +2,11 @@ Setting up Ceph NFS-Ganesha and using a Windows AD for user id lookups.
 
 
 
-To use a Windows AD(or FreeIPA), we need to modify the sssd configuration file to point to the Windows AD server as well as provide the credentials to connect to the LDAP server. This is done by setting a config-map with the sssd.conf file. Along with the sssd.conf, we can make use of the configmap to provide the CA certificate file required for 
+To use a Windows AD(or FreeIPA), we need to modify the sssd configuration file to point to the Windows AD server as well as provide the credentials to connect to the LDAP server. This is done by setting a config-map with the sssd.conf file.
+If your LDAP/AD server doesn't allow anonymous binds to connect to and search the directory, we will have to setup authentication. This can either be a) password based authentication or 2) Kerberos authentication.
+When using a password, it is important to setup TLS for which you will require the CA certificate file to connect to the AD server.
 
-The configMap setup.
+The configMap setup. In this case, we use password based authentication and provide a CA certificate along with it. If using GSSAPI, comment out the block with the password information and uncomment the block for GSSAPI based authentication.
 
 ```
 apiVersion: v1
@@ -26,18 +28,27 @@ data:
     id_provider = ldap
     ldap_uri = ldap://dc1.domain1.sink.test/
     ldap_search_base = CN=Users,DC=domain1,DC=sink,DC=test
-    ldap_id_use_start_tls = True
     cache_credentials = True
-    ldap_tls_cacert = /etc/sssd/rook-additional/ca-certs/ad-ca.pem
-    ldap_tls_reqcert = hard
-    ldap_default_bind_dn = CN=Administrator,CN=Users,DC=domain1,DC=sink,DC=test
-    ldap_default_authtok = Passw0rd
     ldap_schema = AD
     ldap_id_mapping = True
     
     # recommended options for speeding up LDAP lookups:
     enumerate = false
     ignore_group_members = true
+
+    ## Using GSSAPI to connect to the LDAP Server
+    # ldap_sasl_mech = GSSAPI
+    ## Use a Krb5 principal which can lookup ldap searches
+    # ldap_sasl_authid = bwayne@DOMAIN1.SINK.TEST
+
+    ## Using password to connect to the LDAP server
+    ## Use TLS when using password to authenticate
+    ldap_default_bind_dn = CN=Administrator,CN=Users,DC=domain1,DC=sink,DC=test
+    ldap_default_authtok = Passw0rd
+    ldap_tls_cacert = /etc/sssd/rook-additional/ca-certs/ad-ca.pem
+    ldap_tls_reqcert = hard
+    ldap_id_use_start_tls = True
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -85,6 +96,8 @@ data:
 We first create the configMap nfs-sssd-config providing the sssd.conf file. The sssd.conf file is the sssd configuration which will be used by the CephNFS instance. The configuration includes the following directives
 - ldap_uri: Points to the Windows AD server.
 - ldap_search_base: The search base to use for user lookups.
+- ldap_sasl_mech: The SASL mechanism for authenticating with the LDAP server. This is used with Kerberos auth and is set to GSSAPI.
+- ldap_sasl_authid: The kerberos principal used to authenticate with the LDAP server. This has to be provided in the keytab.
 - ldap_tls_cacert: The CA certificate to use. This is the ad-ca.pen file which we upload in this config map.
 - ldap_default_bind_dn: In this case, we use the Administrator account. This should be replaced by a user allowed to look up userids.
 - ldap_default_authok: The password to use for the bind_dn.
@@ -92,7 +105,7 @@ We first create the configMap nfs-sssd-config providing the sssd.conf file. The 
 
 More information about these settings are available at [the sssd website](https://sssd.io/docs/ad/ad-ldap-provider.html)
 
-The second configMap windowsad-ca-cert contains the ca cert file ad-ca.pem which is copied over from the Windows AD server.
+The second configMap windowsad-ca-cert contains the ca cert file ad-ca.pem which is copied over from the Windows AD server. This is only required with password based authentication.
 
 We can now start out CephNFS setup.
 
