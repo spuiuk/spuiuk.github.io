@@ -6,3 +6,4 @@
 - [CephCSI Developer Notes](cephcsi_developer.md)
 - [CephCSI Clients](cephcsi_clients.md)
 - [Ceph - SMB patching and testing](ceph_smb_py_devel.md)
+- [Ceph - SMB debug](cephsmb_debug.md)
