@@ -8,6 +8,11 @@ git checkout -b mgr_smb_add_public_addrs_cli
 ```
 The code I am modifying is at src/pybind/mgr/smb/ and are python code.
 
+To avoid tox errors caused by missing rook modules, you will need to run the following command
+```
+(cd src/pybind/mgr/rook/ && ./generate_rook_ceph_client.sh )
+```
+
 Once the changes are completed, I ran the tox tests to confirm that the python sources are correctly formatted.
 From the repo root, run
 ```
