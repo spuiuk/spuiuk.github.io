@@ -8,3 +8,4 @@
 - [Ceph - SMB patching and testing](ceph_smb_py_devel.md)
 - [Ceph - SMB debug](cephsmb_debug.md)
 - [Ceph - SMB training](ceph-smb-training.md)
+- [Ceph - SMB setting up coredumps for RHEL 9](rhel9_coredumps.md)
