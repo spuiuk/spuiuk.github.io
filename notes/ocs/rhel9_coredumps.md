@@ -9,7 +9,7 @@ RHEL 9 has coredumps disabled by default. To enable it for the SMB service, firs
   ceph-81007864-7c60-11f0-8388-525400762293-sidecar@smb.mysmb.0.0.mycephfs11.dyudcn:smbmetrics.service                                 loaded active running   Ceph sidecar smb.mysmb.0.0.mycephfs11.dyudcn:smbmetrics for 81007864-7c60-11f0-8388-525400762293
   ceph-81007864-7c60-11f0-8388-525400762293@smb.mysmb.0.0.mycephfs11.dyudcn.service                                                    loaded active running   Ceph smb.mysmb.0.0.mycephfs11.dyudcn for 81007864-7c60-11f0-8388-525400762293
 ```
-
+Now look for the main service name. The service names contain the cluster name(mysmb in this case). The main service name does not contain the terms "sidecar" or "init" in the service name. 
 In this case the main service name is ceph-81007864-7c60-11f0-8388-525400762293@smb.mysmb.0.0.mycephfs11.dyudcn.service, the last one listed in the output above.
 
 Now use the systemctl edit command to modify the service file.
