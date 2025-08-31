@@ -45,3 +45,6 @@ TIME                            PID UID GID SIG     COREFILE EXE              SI
 Fri 2025-08-29 16:41:17 UTC 3517810   0   0 SIGABRT present  /usr/sbin/smbd 763.0K
 
 ```
+Use can use the 
+coredumpctl dump <PID> 
+using the PID for the process from the output above to obtain the location of the core file.
