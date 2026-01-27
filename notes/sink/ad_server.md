@@ -2,9 +2,12 @@
 
 This document describes how we could setup a Samba based test AD server. This containerised AD server was first created for use as a test AD server by the "Samba In Kubernetes" project.
 
-## First start the AD server
+## Creating an AD server
 
 ### Test Samba AD Setup on an existing Ceph cluster
+
+The aim of this setup is to create an AD server on one of the nodes of the Ceph server. This avoids the need to have a separate machine running an AD server.
+
 Select a node on the Ceph cluster - eg: mycephfs11
 
 Create a podman network on this node
@@ -51,7 +54,7 @@ This creates an ad server pod which provides DNS, LDAP and Kerberos services for
 
 The install script also modifies the k8s cluster coredns configuration to forward lookups to the domain domain1.sink.test to the newly created ad server. This means that we have a ready made LDAP and Kerberos server we can use for our internal testing.
 
-## To setup LDAP
+## To setup the host as a client for the LDAP access on the AD.
 
 1) From the running ad server container, read the file /var/lib/samba/private/tls/ca.pem. The is the ca cert which is required for tls connections.
 ```
@@ -85,7 +88,7 @@ where
 -Z : Use TLS
 -b "DC=domain1,DC=sink,DC=test" : base dn for search
 
-## To setup kerberos authentication on a container
+## To setup the client for kerberos authentication against the AD
 
 1) Create file /etc/krb5.conf with the following contents
 ```
@@ -110,13 +113,13 @@ DOMAIN1.SINK.TEST = {
 [domain_realm]
  default.svc.cluster.local = DOMAIN1.SINK.TEST
  .default.svc.cluster.local = DOMAIN1.SINK.TEST
- ```
+```
 
- 2) Use kinit with test username 'bwayne' and password '1115Rose.' and obtain a ticket
- ```
+2) Use kinit with test username 'bwayne' and password '1115Rose.' and obtain a ticket
+```
  # kinit bwayne
 Password for bwayne@DOMAIN1.SINK.TEST:
- ```
+```
 
 The kerberos server has to the following users/passwords created for our use
 ```
