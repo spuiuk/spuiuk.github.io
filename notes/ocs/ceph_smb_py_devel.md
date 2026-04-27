@@ -13,10 +13,12 @@ To avoid tox errors caused by missing rook modules, you will need to run the fol
 (cd src/pybind/mgr/rook/ && ./generate_rook_ceph_client.sh )
 ```
 
+With the latest upstream version of ceph, you will need Python version 3.12. Please make sure that this is set correctly.
+
 Once the changes are completed, I ran the tox tests to confirm that the python sources are correctly formatted.
 From the repo root, run
 ```
-cd src/pybind/mgr && tox -e mypy,flake8,check-black -x testenv.basepython=python3.10
+cd src/pybind/mgr && tox -e mypy,flake8,check-black -x testenv.basepython=python3.12
 ```
 
 After making the necessary modifications, we need to test out the changes.
@@ -31,19 +33,23 @@ To do this, from the ceph repo root, run the command
 podman rmi ceph_test
 # generate a new ceph_test image
 cd build/
-../src/script/cpatch --target ceph_test --py
+../src/script/cpatch.py --target ceph_test --pull
 # Now push the image to my container repositories at quay.io
 podman push ceph_test:latest quay.io/spuiuk/ceph_test
 ```
-The new test image is saved at quay.io/spuiuk/ceph_test - modify this to use your own container repository target. You can now use this ceph container to test by setting the CEPHADM_IMAGE environment variable before calling cephadm bootstrap.
+The new test image is saved at quay.io/spuiuk/ceph_test - modify this to use your own container repository target. You can now use this ceph container to test by setting the image for ceph-base under IMAGES in extra_vars.yml file before calling cephadm bootstrap. Please read the [Readme file](https://github.com/spuiuk/cephfs_smb/blob/main/README.md) for more details.
 
 With the cephfs_smb project, create a file devel.mk with the following content
 ```
-DEVEL_IMAGE = quay.io/spuiuk/ceph_test:latest
+CUSTOM_VERSION:
+  ..
+  images:
+    ceph-base: quay.io/spuiuk/ceph_test
+    ..
 ```
 This image is passed to cephadm for use and testing.
 
-Create the cluster as described in the cephfs_smb README file and test your changes.
+Create the cluster as described in the cephfs_smb [README file](https://github.com/spuiuk/cephfs_smb/blob/main/README.md) and test your changes.
 
 For example, for my test patch, I ran the following from within the test cluster.
 ```
