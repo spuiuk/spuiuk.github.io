@@ -11,3 +11,4 @@
 - [Ceph - SMB setting up coredumps for RHEL 9](rhel9_coredumps.md)
 - [Ceph - SMB reading logs](smb_logs.md)
 - [Ceph-SMB GRPC](GRPC_arguments.md)
+- [Ceph-RGW tutorial](ceph_rgw.md)
